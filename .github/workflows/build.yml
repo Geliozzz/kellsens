@@ -1,0 +1,48 @@
+name: build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/nrfconnect/sdk-nrf-toolchain:v3.2.0
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          set -euxo pipefail
+
+          python3 -m venv .venv
+          "$GITHUB_WORKSPACE/.venv/bin/python" -m pip install --upgrade pip
+          "$GITHUB_WORKSPACE/.venv/bin/python" -m pip install --upgrade west
+
+          rm -rf ws build
+          mkdir -p ws
+          cd ws
+
+          "$GITHUB_WORKSPACE/.venv/bin/west" init -l "$GITHUB_WORKSPACE" --mf west.yml
+          "$GITHUB_WORKSPACE/.venv/bin/west" update
+          "$GITHUB_WORKSPACE/.venv/bin/west" zephyr-export
+
+          "$GITHUB_WORKSPACE/.venv/bin/west" build -b nrf9151dk/nrf9151 -s "$GITHUB_WORKSPACE/app" -d "$GITHUB_WORKSPACE/build"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kellsens-nrf9151dk
+          path: |
+            build/merged.hex
+            build/zephyr/zephyr.elf
+            build/zephyr/zephyr.hex
+          if-no-files-found: error
+
