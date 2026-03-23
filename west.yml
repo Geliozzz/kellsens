@@ -2,15 +2,14 @@ manifest:
   version: "0.10"
 
   remotes:
-    - name: ncs
-      url-base: https://github.com/nrfconnect
     - name: zephyr
       url-base: https://github.com/zephyrproject-rtos
 
   projects:
-    - name: nrf
-      remote: ncs
-      repo-path: sdk-nrf
-      revision: v3.2.0
+    - name: zephyr
+      remote: zephyr
+      revision: main
       import: true
 
+  self:
+    path: kellsens
