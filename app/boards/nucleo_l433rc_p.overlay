@@ -1,0 +1,37 @@
+/ {
+	chosen {
+		zephyr,display = <&epd>;
+	};
+
+	mipi_dbi: mipi_dbi {
+		compatible = "zephyr,mipi-dbi-spi";
+		status = "okay";
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		spi-dev = <&spi1>;
+
+		dc-gpios = <&gpioc 0 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpioc 1 GPIO_ACTIVE_LOW>;
+
+		epd: epd@0 {
+			compatible = "solomon,ssd1681";
+			reg = <0>;
+			status = "okay";
+
+			busy-gpios = <&gpioc 5 GPIO_ACTIVE_HIGH>;
+
+			width = <200>;
+			height = <200>;
+
+			mipi-mode = "MIPI_DBI_MODE_SPI_4WIRE";
+			mipi-max-frequency = <1000000>;
+		};
+	};
+};
+
+&spi1 {
+	status = "okay";
+	cs-gpios = <&gpioc 3 GPIO_ACTIVE_LOW>;
+};
