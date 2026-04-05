@@ -6,17 +6,19 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys/printk.h>
 
-#define DC_PIN 0
-#define RST_PIN 1
-#define BUSY_PIN 5
-#define CS_PIN 4
+#define DC_NODE   DT_NODELABEL(epd_dc)
+#define RST_NODE  DT_NODELABEL(epd_rst)
+#define BUSY_NODE  DT_NODELABEL(epd_busy)
+static const struct gpio_dt_spec dc  = GPIO_DT_SPEC_GET(DC_NODE, gpios);
+static const struct gpio_dt_spec rst = GPIO_DT_SPEC_GET(RST_NODE, gpios);
+static const struct gpio_dt_spec busy = GPIO_DT_SPEC_GET(BUSY_NODE, gpios);
+static const struct gpio_dt_spec cs =
+GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(spi1), cs_gpios, 0);
 
 #define EPD_WIDTH 200
 #define EPD_HEIGHT 200
 #define EPD_BUF_SIZE (EPD_WIDTH * EPD_HEIGHT / 8)
 
-static const struct device *gpio_dev = DEVICE_DT_GET(DT_NODELABEL(gpioc));
-static const struct device *gpio_dev_a = DEVICE_DT_GET(DT_NODELABEL(gpioa));
 static const struct device *spi_dev = DEVICE_DT_GET(DT_NODELABEL(spi1));
 
 static struct spi_config spi_cfg = {
@@ -25,13 +27,21 @@ static struct spi_config spi_cfg = {
     .slave = 0,
 };
 
-static void cs_low(void) { gpio_pin_set(gpio_dev_a, CS_PIN, 0); }
+static void cs_low(void) { 
+    gpio_pin_set_dt(&cs, 1);
+}
 
-static void cs_high(void) { gpio_pin_set(gpio_dev_a, CS_PIN, 1); }
+static void cs_high(void) { 
+    gpio_pin_set_dt(&cs, 0);
+}
 
-static void dc_cmd(void) { gpio_pin_set(gpio_dev, DC_PIN, 0); }
+static void dc_cmd(void) { 
+    gpio_pin_set_dt(&dc, 0);
+}
 
-static void dc_data(void) { gpio_pin_set(gpio_dev, DC_PIN, 1); }
+static void dc_data(void) { 
+    gpio_pin_set_dt(&dc, 1);
+}
 
 static int spi_write_byte(uint8_t byte) {
     struct spi_buf buf = {
@@ -61,11 +71,11 @@ static void epd_data(uint8_t data) {
 }
 
 static void epd_reset(void) {
-    gpio_pin_set(gpio_dev, RST_PIN, 1);
+    gpio_pin_set_dt(&rst, 1);
     k_msleep(10);
-    gpio_pin_set(gpio_dev, RST_PIN, 0);
+    gpio_pin_set_dt(&rst, 0);
     k_msleep(10);
-    gpio_pin_set(gpio_dev, RST_PIN, 1);
+    gpio_pin_set_dt(&rst, 1);
     k_msleep(20);
 }
 
@@ -73,7 +83,8 @@ static void epd_wait_busy_timeout(int timeout_ms) {
     int elapsed = 0;
 
     while (elapsed < timeout_ms) {
-        int v = gpio_pin_get(gpio_dev, BUSY_PIN);
+        // int v = gpio_pin_get(gpio_dev, BUSY_PIN);
+        int v = gpio_pin_get_dt(&busy);
 
         if (v > 0) {
             return;
@@ -187,42 +198,18 @@ static void epd_refresh(void) {
 }
 
 void display_init(void) {
-    if (!device_is_ready(gpio_dev)) {
-        printk("gpio not ready\n");
-        return;
-    }
-
     if (!device_is_ready(spi_dev)) {
         printk("spi not ready\n");
         return;
     }
 
-    if (gpio_pin_configure(gpio_dev, DC_PIN, GPIO_OUTPUT_ACTIVE) != 0) {
-        printk("DC pin configure failed\n");
-        return;
-    }
-
-    if (gpio_pin_configure(gpio_dev, RST_PIN, GPIO_OUTPUT_ACTIVE) != 0) {
-        printk("RST pin configure failed\n");
-        return;
-    }
-
-    if (gpio_pin_configure(gpio_dev_a, CS_PIN, GPIO_OUTPUT_ACTIVE) != 0) {
-        printk("CS pin configure failed\n");
-        return;
-    }
-
-    if (gpio_pin_configure(gpio_dev, BUSY_PIN, GPIO_INPUT | GPIO_PULL_UP) !=
-        0) {
-        printk("BUSY pin configure failed\n");
-        return;
-    }
-
+    gpio_pin_configure_dt(&dc, GPIO_OUTPUT_INACTIVE);
+    gpio_pin_configure_dt(&rst, GPIO_OUTPUT_ACTIVE);
+    gpio_pin_configure_dt(&cs, GPIO_OUTPUT_INACTIVE);
+    gpio_pin_configure_dt(&busy, GPIO_INPUT);
+    
     cs_high();
     dc_data();
-    gpio_pin_set(gpio_dev, RST_PIN, 1);
-
-    printk("EPD init start, BUSY=%d\n", gpio_pin_get(gpio_dev, BUSY_PIN));
 
     epd_init_panel();
 
@@ -234,6 +221,4 @@ void display_init(void) {
 
     epd_draw_test_pattern();
     epd_refresh();
-
-    printk("EPD init done, BUSY=%d\n", gpio_pin_get(gpio_dev, BUSY_PIN));
 }
