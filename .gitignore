@@ -4,3 +4,4 @@ bootloader/
 build/
 modules/
 tools/
+.aider*

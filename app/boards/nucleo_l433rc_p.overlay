@@ -1,0 +1,25 @@
+&spi1 {
+	status = "okay";
+	cs-gpios = <&gpioa 4 GPIO_ACTIVE_LOW>;
+};
+
+ / {
+	test_pins {
+		compatible = "gpio-leds";
+
+		epd_dc: epd_dc {
+			gpios = <&gpioc 0 GPIO_ACTIVE_HIGH>;
+			label = "EPD_DC";
+		};
+
+		epd_rst: epd_rst {
+			gpios = <&gpioc 1 GPIO_ACTIVE_HIGH>;
+			label = "EPD_RST";
+		};
+
+		epd_busy: epd_busy {
+			gpios = <&gpioc 5 GPIO_ACTIVE_HIGH>;
+			label = "EPD_BUSY";
+		};
+	};
+};

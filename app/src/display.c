@@ -9,13 +9,14 @@
 #define DC_PIN 0
 #define RST_PIN 1
 #define BUSY_PIN 5
-#define CS_PIN 3
+#define CS_PIN 4
 
 #define EPD_WIDTH 200
 #define EPD_HEIGHT 200
 #define EPD_BUF_SIZE (EPD_WIDTH * EPD_HEIGHT / 8)
 
 static const struct device *gpio_dev = DEVICE_DT_GET(DT_NODELABEL(gpioc));
+static const struct device *gpio_dev_a = DEVICE_DT_GET(DT_NODELABEL(gpioa));
 static const struct device *spi_dev = DEVICE_DT_GET(DT_NODELABEL(spi1));
 
 static struct spi_config spi_cfg = {
@@ -24,9 +25,9 @@ static struct spi_config spi_cfg = {
     .slave = 0,
 };
 
-static void cs_low(void) { gpio_pin_set(gpio_dev, CS_PIN, 0); }
+static void cs_low(void) { gpio_pin_set(gpio_dev_a, CS_PIN, 0); }
 
-static void cs_high(void) { gpio_pin_set(gpio_dev, CS_PIN, 1); }
+static void cs_high(void) { gpio_pin_set(gpio_dev_a, CS_PIN, 1); }
 
 static void dc_cmd(void) { gpio_pin_set(gpio_dev, DC_PIN, 0); }
 
@@ -206,7 +207,7 @@ void display_init(void) {
         return;
     }
 
-    if (gpio_pin_configure(gpio_dev, CS_PIN, GPIO_OUTPUT_ACTIVE) != 0) {
+    if (gpio_pin_configure(gpio_dev_a, CS_PIN, GPIO_OUTPUT_ACTIVE) != 0) {
         printk("CS pin configure failed\n");
         return;
     }
