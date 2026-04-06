@@ -1,25 +1,36 @@
+#include <zephyr/dt-bindings/spi/spi.h>
+/ {
+	mipi_dbi0: mipi_dbi {
+		compatible = "zephyr,mipi-dbi-spi";
+		status = "okay";
+
+		spi-dev = <&spi1>;
+		dc-gpios = <&gpioc 0 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpioc 1 GPIO_ACTIVE_LOW>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+		write-only;
+		/* duplex = <SPI_HALF_DUPLEX>; */
+
+		epd_mipi: epd_mipi@0 {
+			compatible = "solomon,ssd1681";
+			reg = <0>;
+			status = "disabled";
+
+			busy-gpios = <&gpioc 5 GPIO_ACTIVE_HIGH>;
+			width = <200>;
+			height = <200>;
+
+			mipi-mode = "MIPI_DBI_MODE_SPI_4WIRE";
+			mipi-max-frequency = <1000000>;
+		};
+	};
+};
+
 &spi1 {
 	status = "okay";
 	cs-gpios = <&gpioa 4 GPIO_ACTIVE_LOW>;
-};
-
- / {
-	test_pins {
-		compatible = "gpio-leds";
-
-		epd_dc: epd_dc {
-			gpios = <&gpioc 0 GPIO_ACTIVE_HIGH>;
-			label = "EPD_DC";
-		};
-
-		epd_rst: epd_rst {
-			gpios = <&gpioc 1 GPIO_ACTIVE_HIGH>;
-			label = "EPD_RST";
-		};
-
-		epd_busy: epd_busy {
-			gpios = <&gpioc 5 GPIO_ACTIVE_HIGH>;
-			label = "EPD_BUSY";
-		};
-	};
+	/delete-property/ dmas;
+	/delete-property/ dma-names;
 };

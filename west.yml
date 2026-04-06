@@ -8,7 +8,7 @@ manifest:
   projects:
     - name: zephyr
       remote: zephyr
-      revision: main
+      revision: v4.3.0
       import: true
 
   self:
