@@ -53,6 +53,7 @@ void display_init2(void)
 
 	printk("done\n");
 }
+
 void display_init(void)
 {
 	if (!device_is_ready(dbi_dev)) {
@@ -70,16 +71,13 @@ void display_init(void)
 	printk("ret=%d\n", ret);
 	k_msleep(200);
 
-	memset(epd_buf, 0x0F, EPD_BUF_SIZE);
-	memset(epd_buf + 2500, 0xAA, EPD_BUF_SIZE - 2500);
-	memset(epd_buf, 0x00, 1000);
-	memset(epd_buf + 1000, 0xFF, 500);
+	memset(epd_buf, 0x00, EPD_BUF_SIZE);
 
  		uint8_t val = 0x03;
     ret = mipi_dbi_command_write(dbi_dev, &dbi_config, 0x11, &val, 1);
     printk("0x11 ret=%d\n", ret);
 
-	
+
 	/* X window: 0..24 */
 	uint8_t xwin[2] = {0x00, 0x18};
 	ret = mipi_dbi_command_write(dbi_dev, &dbi_config, 0x44, xwin, 2);
@@ -99,19 +97,28 @@ k_msleep(200);
 	uint8_t ycnt[2] = {0x00, 0x00};
 	ret = mipi_dbi_command_write(dbi_dev, &dbi_config, 0x4F, ycnt, 2);
 	printk("0x4F ret=%d\n", ret);
+}
+
+void epd_clear(void)
+{
+	memset(epd_buf, 0xFF, EPD_BUF_SIZE);
+}
+
+void display_refresh(void)
+{
+	/* Reset address counters so refresh is idempotent */
+	uint8_t xcnt = 0x00;
+	int ret = mipi_dbi_command_write(dbi_dev, &dbi_config, 0x4E, &xcnt, 1);
+	printk("0x4E ret=%d\n", ret);
+
+	uint8_t ycnt[2] = {0x00, 0x00};
+	ret = mipi_dbi_command_write(dbi_dev, &dbi_config, 0x4F, ycnt, 2);
+	printk("0x4F ret=%d\n", ret);
 
 	ret = mipi_dbi_command_write(dbi_dev, &dbi_config, 0x24, epd_buf, EPD_BUF_SIZE);
 	printk("after 0x24 ret=%d\n", ret);
 k_msleep(500);
 printk("still alive after 0x24\n");
-//   for (size_t off = 0; off < EPD_BUF_SIZE; off += 16) {
-// 	size_t n = MIN(16, EPD_BUF_SIZE - off);
-// 	ret = mipi_dbi_command_write(dbi_dev, &dbi_config, 0x24, &epd_buf[off], n);
-// 	if (ret) {
-// 		printk("0x24 off=%u ret=%d\n", (unsigned)off, ret);
-// 		return;
-// 	}
-// }
 
 	/* Display refresh */
 	ret = mipi_dbi_command_write(dbi_dev, &dbi_config, 0x20, NULL, 0);
@@ -120,3 +127,7 @@ printk("still alive after 0x24\n");
 	printk("done\n");
 }
 
+uint8_t *display_get_buf(void)
+{
+	return epd_buf;
+}
