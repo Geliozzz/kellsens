@@ -16,9 +16,9 @@
 		epd_mipi: epd_mipi@0 {
 			compatible = "solomon,ssd1681";
 			reg = <0>;
-			status = "okay";
+			status = "disabled";
 
-			zephyr,deferred-init;
+			/* zephyr,deferred-init; */
 
 			busy-gpios = <&gpioc 5 GPIO_ACTIVE_HIGH>;
 			width = <200>;
