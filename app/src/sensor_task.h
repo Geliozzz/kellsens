@@ -4,6 +4,7 @@
 struct sensor_msg {
     int temp;      /* °C, integer */
     int humidity;  /* %, integer */
+    int dew_risk;  /* 0..5 */
 };
 
 extern struct k_msgq sensor_msgq;

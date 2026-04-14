@@ -18,9 +18,17 @@ static void sensor_thread(void *a, void *b, void *c)
         sensor_channel_get(dev, SENSOR_CHAN_AMBIENT_TEMP, &val_temp);
         sensor_channel_get(dev, SENSOR_CHAN_HUMIDITY,     &val_hum);
 
+        int h = val_hum.val1;
+        int risk = (h < 40) ? 0 :
+                   (h < 50) ? 1 :
+                   (h < 60) ? 2 :
+                   (h < 70) ? 3 :
+                   (h < 80) ? 4 : 5;
+
         struct sensor_msg msg = {
             .temp     = val_temp.val1,
             .humidity = val_hum.val1,
+            .dew_risk = risk,
         };
 
         k_msgq_put(&sensor_msgq, &msg, K_NO_WAIT);

@@ -29,6 +29,8 @@ static const uint8_t font_5x7[][7] = {
 
 static int g_temp;
 static int g_humidity;
+static int g_dew_risk;   /* 0..5 */
+static int g_battery;    /* 0..4 */
 
 void ui_set_temperature(int temp_c)
 {
@@ -38,6 +40,16 @@ void ui_set_temperature(int temp_c)
 void ui_set_humidity(int humidity_pct)
 {
     g_humidity = humidity_pct;
+}
+
+void ui_set_dew_risk(int risk)
+{
+    g_dew_risk = (risk < 0) ? 0 : (risk > 5) ? 5 : risk;
+}
+
+void ui_set_battery(int level)
+{
+    g_battery = (level < 0) ? 0 : (level > 4) ? 4 : level;
 }
 
 /* Set a single pixel black in buf (200x200, 1bpp, row-major) */
@@ -178,10 +190,17 @@ void ui_render(void)
     /* --- Battery indicator (top right) --- */
     draw_rect_outline(buf, 120,  7, 62, 18);        /* outer frame  */
     draw_rect(buf, 182, 10,  4, 11);                /* right contact */
-    draw_rect(buf, 122,  9, 11, 14);                /* seg 0 filled */
-    draw_rect(buf, 135,  9, 11, 14);                /* seg 1 filled */
-    draw_rect(buf, 148,  9, 11, 14);                /* seg 2 filled */
-    draw_rect_outline(buf, 161,  9, 11, 14);        /* seg 3 empty  */
+    {
+        static const int bx[4] = { 122, 135, 148, 161 };
+        int i;
+        for (i = 0; i < 4; i++) {
+            if (i < g_battery) {
+                draw_rect(buf, bx[i], 9, 11, 14);
+            } else {
+                draw_rect_outline(buf, bx[i], 9, 11, 14);
+            }
+        }
+    }
 
     /* --- Dew risk drop icon (top left, outline) --- */
     draw_rect(buf, 12,  4,  2,  4);
@@ -201,12 +220,18 @@ void ui_render(void)
     draw_rect(buf, 16, 27,  2,  3);
     draw_rect(buf, 10, 30,  6,  2);
 
-    /* Dew risk segments — all empty (risk=0), fill from bottom up */
-    draw_rect_outline(buf, 3, 154, 20, 26);  /* seg 0 (bottom) */
-    draw_rect_outline(buf, 3, 126, 20, 26);  /* seg 1 */
-    draw_rect_outline(buf, 3,  98, 20, 26);  /* seg 2 */
-    draw_rect_outline(buf, 3,  70, 20, 26);  /* seg 3 */
-    draw_rect_outline(buf, 3,  42, 20, 26);  /* seg 4 (top) */
+    /* Dew risk segments — fill from bottom up */
+    {
+        static const int dy[5] = { 154, 126, 98, 70, 42 };
+        int i;
+        for (i = 0; i < 5; i++) {
+            if (i < g_dew_risk) {
+                draw_rect(buf, 3, dy[i], 20, 26);
+            } else {
+                draw_rect_outline(buf, 3, dy[i], 20, 26);
+            }
+        }
+    }
 
     /* --- Vertical divider --- */
     draw_rect(buf, 28, 2, 1, 196);

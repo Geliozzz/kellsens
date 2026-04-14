@@ -4,20 +4,19 @@
 
 static void display_thread(void *a, void *b, void *c)
 {
-    static int last_temp     = 8;
-    static int last_humidity = 72;
+    static struct sensor_msg last_msg = { .temp = 8, .humidity = 72, .dew_risk = 0 };
 
     while (1) {
         k_sleep(K_SECONDS(30));
 
         struct sensor_msg msg;
         while (k_msgq_get(&sensor_msgq, &msg, K_NO_WAIT) == 0) {
-            last_temp     = msg.temp;
-            last_humidity = msg.humidity;
+            last_msg = msg;
         }
 
-        ui_set_temperature(last_temp);
-        ui_set_humidity(last_humidity);
+        ui_set_temperature(last_msg.temp);
+        ui_set_humidity(last_msg.humidity);
+        ui_set_dew_risk(last_msg.dew_risk);
         ui_render();
     }
 }
