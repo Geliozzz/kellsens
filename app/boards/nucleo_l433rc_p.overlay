@@ -30,6 +30,18 @@
 	};
 };
 
+&i2c1 {
+    status = "okay";
+    pinctrl-0 = <&i2c1_scl_pb6 &i2c1_sda_pb7>;
+    pinctrl-names = "default";
+
+    sht3xd@44 {
+        compatible = "sensirion,sht3xd";
+        reg = <0x44>;
+        status = "okay";
+    };
+};
+
 &spi1 {
 	status = "okay";
 	cs-gpios = <&gpioa 4 GPIO_ACTIVE_LOW>;

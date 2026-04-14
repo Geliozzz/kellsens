@@ -7,4 +7,6 @@ target_sources(app PRIVATE
   src/main.c
   src/display.c
   src/ui.c
+  src/sensor_task.c
+  src/display_task.c
 )
