@@ -4,7 +4,7 @@
 
 static void display_thread(void *a, void *b, void *c)
 {
-    static struct sensor_msg last_msg = { .temp = -2, .humidity = 23, .dew_risk = 0, .battery = 4 };
+    static struct sensor_msg last_msg = { .temp = 10, .humidity = 23, .dew_risk = 0, .battery = 4 };
 
     while (1) {
         k_sleep(K_SECONDS(30));
