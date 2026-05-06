@@ -2,13 +2,18 @@ name: build
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
+
+env:
+  IMAGE: zephyrprojectrtos/zephyr-build:latest
+  SDK_VER: 0.17.0
+  SDK_DIR: /opt/zephyr-sdk-0.17.0
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/nrfconnect/sdk-nrf-toolchain:v3.2.0
 
     defaults:
       run:
@@ -18,31 +23,91 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Get image digest
+        id: img
+        run: |
+          digest=$(docker buildx imagetools inspect $IMAGE | grep '^Digest:' | awk '{print $2}')
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Docker image
+        id: docker-cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/zephyr-build.tar
+          key: docker-${{ steps.img.outputs.digest }}
+
+      - name: Load or pull image
+        run: |
+          if [ "${{ steps.docker-cache.outputs.cache-hit }}" = "true" ]; then
+            docker load -i /tmp/zephyr-build.tar
+          else
+            docker pull $IMAGE
+            docker save -o /tmp/zephyr-build.tar $IMAGE
+          fi
+
+      - name: Cache Zephyr SDK
+        id: sdk-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.SDK_DIR }}
+          key: zephyr-sdk-${{ env.SDK_VER }}-arm
+
+      - name: Install Zephyr SDK
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
+        run: |
+          wget -q "https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v${SDK_VER}/zephyr-sdk-${SDK_VER}_linux-x86_64_minimal.tar.xz" \
+            -O /tmp/sdk.tar.xz
+          mkdir -p "$SDK_DIR"
+          tar xf /tmp/sdk.tar.xz --strip-components=1 -C "$SDK_DIR"
+          cd "$SDK_DIR" && ./setup.sh -t arm-zephyr-eabi
+
+      - name: Cache west modules
+        id: west-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/../.west
+            ${{ github.workspace }}/../zephyr
+            ${{ github.workspace }}/../modules
+            ${{ github.workspace }}/../bootloader
+            ${{ github.workspace }}/../tools
+          key: west-${{ hashFiles('west.yml') }}
+
+      - name: West init & update
+        if: steps.west-cache.outputs.cache-hit != 'true'
+        run: |
+          WEST_ROOT=$(dirname "$GITHUB_WORKSPACE")
+          docker run --rm -u root \
+            -v "$WEST_ROOT:$WEST_ROOT" -w "$WEST_ROOT" \
+            -v "$SDK_DIR:$SDK_DIR" \
+            -e ZEPHYR_SDK_INSTALL_DIR="$SDK_DIR" \
+            $IMAGE bash -c "
+              pip install --upgrade west &&
+              west init -l '$GITHUB_WORKSPACE' --mf west.yml &&
+              west update
+            "
+
       - name: Build
         run: |
-          set -euxo pipefail
-
-          python3 -m venv .venv
-          "$GITHUB_WORKSPACE/.venv/bin/python" -m pip install --upgrade pip
-          "$GITHUB_WORKSPACE/.venv/bin/python" -m pip install --upgrade west
-
-          rm -rf ws build
-          mkdir -p ws
-          cd ws
-
-          "$GITHUB_WORKSPACE/.venv/bin/west" init -l "$GITHUB_WORKSPACE" --mf west.yml
-          "$GITHUB_WORKSPACE/.venv/bin/west" update
-          "$GITHUB_WORKSPACE/.venv/bin/west" zephyr-export
-
-          "$GITHUB_WORKSPACE/.venv/bin/west" build -b nrf9151dk/nrf9151 -s "$GITHUB_WORKSPACE/app" -d "$GITHUB_WORKSPACE/build"
+          WEST_ROOT=$(dirname "$GITHUB_WORKSPACE")
+          docker run --rm -u root \
+            -v "$WEST_ROOT:$WEST_ROOT" -w "$WEST_ROOT" \
+            -v "$SDK_DIR:$SDK_DIR" \
+            -e ZEPHYR_SDK_INSTALL_DIR="$SDK_DIR" \
+            $IMAGE bash -c "
+              pip install --upgrade west &&
+              west zephyr-export &&
+              west build -b nucleo_l433rc_p \
+                -s '$GITHUB_WORKSPACE/app' \
+                -d '$GITHUB_WORKSPACE/build'
+            "
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: kellsens-nrf9151dk
+          name: kellsens-nucleo-l433rc
           path: |
-            build/merged.hex
-            build/zephyr/zephyr.elf
             build/zephyr/zephyr.hex
+            build/zephyr/zephyr.elf
+            build/zephyr/zephyr.bin
           if-no-files-found: error
-
