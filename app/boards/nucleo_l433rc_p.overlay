@@ -67,3 +67,7 @@
 	/delete-property/ dmas;
 	/delete-property/ dma-names;
 };
+
+&iwdg {
+	status = "okay";
+};

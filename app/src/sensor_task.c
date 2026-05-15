@@ -1,12 +1,21 @@
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/adc.h>
 #include <zephyr/drivers/i2c.h>
+#include <zephyr/drivers/watchdog.h>
 #include "sensor_task.h"
+
+#define WDT_NODE DT_NODELABEL(iwdg)
 
 K_MSGQ_DEFINE(sensor_msgq, sizeof(struct sensor_msg), 4, 4);
 
 static void sensor_thread(void *a, void *b, void *c)
 {
+#if DT_NODE_HAS_STATUS(WDT_NODE, okay)
+    /* IWDG is auto-armed at boot with CONFIG_IWDG_STM32_INITIAL_TIMEOUT (~26s).
+     * Driver has HAS_WDT_NO_CALLBACKS, so channel id 0 is the only one. */
+    const struct device *wdt = DEVICE_DT_GET(WDT_NODE);
+#endif
+
         /* Soft reset SHT3x before driver init check */
     const struct device *i2c = DEVICE_DT_GET(DT_NODELABEL(i2c1));
     const struct device *dev = DEVICE_DT_GET_ANY(sensirion_sht3xd);
@@ -76,6 +85,10 @@ static void sensor_thread(void *a, void *b, void *c)
         };
 
         k_msgq_put(&sensor_msgq, &msg, K_NO_WAIT);
+
+#if DT_NODE_HAS_STATUS(WDT_NODE, okay)
+        wdt_feed(wdt, 0);
+#endif
         k_sleep(K_SECONDS(10));
     }
 }
